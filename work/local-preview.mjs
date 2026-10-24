@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+let html=fs.readFileSync('work/page.html','utf8');
+html=html.replace("const photoURL=id=>'/api/photos/'+id;", "const photoURL=id=>id;");
+const start=html.indexOf('async function api('),end=html.indexOf('\nasync function refresh()',start);
+const local=`const localDB=new Promise((resolve,reject)=>{const req=indexedDB.open('arena-fields-grounds-preview',1);req.onupgradeneeded=()=>req.result.createObjectStore('records',{keyPath:'id'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(new Error('Local storage is unavailable. Open this preview in a browser with storage enabled.'));});
+async function api(path,options={}){const db=await localDB;return new Promise((resolve,reject)=>{const tx=db.transaction('records',options.method?'readwrite':'readonly');const store=tx.objectStore('records');let result;let op;if(options.method==='POST'){result=JSON.parse(options.body);op=store.put(result)}else if(options.method==='DELETE'){op=store.delete(decodeURIComponent(path.slice(13)));result={ok:true}}else{op=store.getAll();op.onsuccess=()=>result=op.result;}tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(new Error('Could not save locally. Check available browser storage.'));tx.onabort=tx.onerror;});}`;
+html=html.slice(0,start)+local+html.slice(end);
+html=html.replace("let res=await api('/api/photos',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});return res.id", "return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Could not read this image.'));reader.readAsDataURL(blob);})");
+html=html.replace('<div id="error"', '<div style="background:#eef2e2;color:#576b40;padding:10px 14px;margin-top:16px;border:1px solid #d7e1c8;border-radius:5px;font-size:11px"><strong>LOCAL PREVIEW</strong> &nbsp; Records stay in this browser. Cloud publishing is pending; this copy does not sync across devices.</div><div id="error"');
+html=html.replace('Private grounds workspace','Local preview workspace');
+fs.writeFileSync(process.argv[2],html);
