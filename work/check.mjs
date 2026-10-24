@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
+const html=fs.readFileSync('work/page.html','utf8');const js=html.split('<script>')[1].split('</script>')[0];
+const nodes=new Map();const node=s=>{if(!nodes.has(s))nodes.set(s,{style:{},textContent:'',innerHTML:''});return nodes.get(s)};
+const ctx=vm.createContext({console,Date,Math,JSON,Number,String,Array,Object,Set,Map,crypto,Blob,URL,document:{querySelector:node,addEventListener(){}},fetch:async()=>({ok:true,json:async()=>[]}),window:{scrollTo(){},print(){}},setTimeout,confirm:()=>true});
+vm.runInContext(js,ctx);for(const v of ['Overview','Daily checklist','Calendars','Rainfall','Work logs','Photo journal','Reports']){vm.runInContext('view='+JSON.stringify(v)+';render()',ctx);assert(node('#app').innerHTML.includes('class='),v)}
+vm.runInContext(`rows=[{id:'a',kind:'rain',date:selected,field:'Baseball',amount:0.4},{id:'b',kind:'work',date:selected,field:'Baseball',minutes:90,title:'Mound repair'},{id:'c',kind:'check',date:selected,field:'Baseball',task:0,done:true}]; view='Reports';render()`,ctx);assert(node('#app').innerHTML.includes('1.5'));assert(node('#app').innerHTML.includes('0.40'));
+const worker=await import('../worker/index.js');assert.equal(typeof worker.default.fetch,'function');const req=(p,init={})=>new Request('https://arena.test'+p,init);const owner={'oai-authenticated-user-id':'user1','Content-Type':'application/json'};
+assert.equal((await worker.default.fetch(req('/'),{})).status,200);assert.equal((await worker.default.fetch(req('/api/records'),{})).status,401);
+let stored;const env={DB:{prepare(sql){return {bind(...values){return {run:async()=>{stored=values},all:async()=>({results:[{id:'user1:x',kind:'work',payload:JSON.stringify({clientId:'x',field:'Baseball',date:'2026-10-24',minutes:30})}]})}}}}}};
+let res=await worker.default.fetch(req('/api/records',{method:'POST',headers:owner,body:JSON.stringify({id:'x',kind:'work',date:'2026-10-24',field:'Baseball',title:'Repair',minutes:30})}),env);assert.equal(res.status,200);assert.equal(stored[0],'user1:x');res=await worker.default.fetch(req('/api/records',{headers:owner}),env);assert.equal((await res.json())[0].id,'x');
+res=await worker.default.fetch(req('/api/records',{method:'POST',headers:owner,body:JSON.stringify({id:'x',kind:'rain',date:'2026-10-24',field:'Baseball',amount:-2})}),env);assert.equal(res.status,400);
+console.log('All seven screens render; report calculations, record ownership, authentication, and input validation passed.');
