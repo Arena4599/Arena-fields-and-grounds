@@ -1,0 +1,16 @@
+{
+  "name": "Arena Fields & Grounds",
+  "short_name": "Arena Grounds",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#70243a",
+  "icons": [
+    {
+      "src": "./arena-icon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
